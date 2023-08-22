@@ -80,6 +80,41 @@ config:
     resourcedetection:
       detectors: [ ec2, eks ]
       override: true
+    attributes/istio:
+      actions:
+        - action: delete
+          key: source_cluster
+        - action: delete
+          key: destination_cluster
+        - action: delete
+          key: source_canonical_service
+        - action: delete
+          key: destination_canonical_service
+        - action: delete
+          key: source_canonical_revision
+        - action: delete
+          key: destination_canonical_revision
+      include:
+        match_type: regexp
+        metric_names:
+          - istio_.*
+    transform/istio_service_name:
+      error_mode: ignore
+      log_statements:
+        - context: resource
+          statements:
+            - set(attributes["service.name"], Concat([attributes["k8s.pod.labels.app"],
+              attributes["k8s.namespace.name"]], ".")) where attributes["service.name"]
+              == nil and attributes["k8s.pod.labels.app"] != nil and attributes["k8s.namespace.name"]
+              != nil
+            - set(cache["owner_name"], attributes["k8s.pod.name"]) where attributes["service.name"]
+              == nil and attributes["k8s.pod.name"] != nil
+            - replace_pattern(cache["owner_name"], "^(.+?)-(?:(?:[0-9bcdf]+-)?[bcdfghjklmnpqrstvwxz2456789]{5}|[0-9]+)$$",
+              "$$1") where attributes["service.name"] == nil and cache["owner_name"] !=
+              nil
+            - set(attributes["service.name"], Concat([cache["owner_name"], attributes["k8s.namespace.name"]],
+              ".")) where attributes["service.name"] == nil and cache["owner_name"] != nil
+              and attributes["k8s.namespace.name"] != nil
   exporters:
     splunk_hec:
       token: "${SPLUNK_HEC_TOKEN}"
@@ -105,8 +140,8 @@ config:
         processors: [resourcedetection]
         exporters: [sapm, signalfx]
       metrics:
-        processors: [resourcedetection]
+        processors: [resourcedetection, attributes/istio]
         exporters: [signalfx]
       logs:
-        processors: [resourcedetection]
+        processors: [resourcedetection, transform/istio_service_name]
         exporters: [splunk_hec, awscloudwatchlogs]
