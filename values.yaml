@@ -76,6 +76,25 @@ extraEnvs:
         key: CLOUDWATCH_REGION
 
 config:
+  receivers:
+    prometheus/agent:
+      config:
+        scrape_configs:
+          - job_name: otel-agent
+            scrape_interval: 10s
+            static_configs:
+              - targets:
+                  - ${K8S_POD_IP}:8889
+    receiver_creator:
+      receivers:
+        prometheus_simple:
+          config:
+            endpoint: '`endpoint`:`"prometheus.io/port" in annotations ? annotations["prometheus.io/port"]
+                : 9090`'
+            metrics_path: '`"prometheus.io/path" in annotations ? annotations["prometheus.io/path"]
+                : "/metrics"`'
+          rule: type == "pod" && annotations["prometheus.io/scrape"] == "true" && "istio.io/rev"
+            in labels
   processors:
     resourcedetection:
       detectors: [ ec2, eks ]
@@ -140,6 +159,7 @@ config:
         processors: [resourcedetection]
         exporters: [sapm, signalfx]
       metrics:
+        receivers: [receiver_creator]
         processors: [resourcedetection, attributes/istio]
         exporters: [signalfx]
       logs:
