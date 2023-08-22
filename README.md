@@ -7,6 +7,8 @@ The values.yaml file includes:
 1) Presets for logCollection, kubernetesAttributes, kubeletMetrics, kubernetesEvents, and hostMetrics
 2) Exporters to send metrics and traces to Splunk Observability Cloud
 3) Exporters to send logs to AWS CloudWatch Logs and Splunk Platform
+4) Scraping of istio control plane metrics using istio's Prometheus endpoint
+5) Addition of a `service.name` resource attribute to logs with the same value as istio generates for traces to enable correlation between logs and traces using this attribute.
 
 Edit configmap.yaml and secret.yaml with the specific parameters for your environment. 
 
